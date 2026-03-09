@@ -1,0 +1,17 @@
+# Secrets — never commit
+Config.xcconfig
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/

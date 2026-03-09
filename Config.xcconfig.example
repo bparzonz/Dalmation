@@ -1,0 +1,5 @@
+// Config.xcconfig.example
+// Copy this file to Config.xcconfig and fill in your values.
+// Get your Client ID at: developer.spotify.com → your app → Settings
+
+SPOTIFY_CLIENT_ID = YOUR_SPOTIFY_CLIENT_ID

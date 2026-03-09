@@ -24,6 +24,7 @@
 		7FBB2CA02F5E8B08007F74AC /* Dalmation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dalmation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7FBB2CA42F5E8B08007F74AC /* RealityKitContent */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = RealityKitContent; sourceTree = "<group>"; };
 		7FBB2CB42F5E8B0A007F74AC /* DalmationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DalmationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D42F5E8B08007F74AC /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -74,6 +75,7 @@
 		7FBB2C972F5E8B08007F74AC = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D42F5E8B08007F74AC /* Config.xcconfig */,
 				7FBB2CA22F5E8B08007F74AC /* Dalmation */,
 				7FBB2CA32F5E8B08007F74AC /* Packages */,
 				7FBB2CB72F5E8B0A007F74AC /* DalmationTests */,
@@ -231,6 +233,7 @@
 /* Begin XCBuildConfiguration section */
 		7FBB2CBC2F5E8B0A007F74AC /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1B2C3D42F5E8B08007F74AC /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -260,6 +263,7 @@
 		};
 		7FBB2CBD2F5E8B0A007F74AC /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1B2C3D42F5E8B08007F74AC /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;

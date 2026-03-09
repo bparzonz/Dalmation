@@ -10,24 +10,30 @@ import SwiftUI
 @main
 struct DalmationApp: App {
 
-    @State private var appModel = AppModel()
+    @State private var appModel: AppModel
+    @State private var authManager: SpotifyAuthManager
+    @State private var apiClient: SpotifyAPIClient
+    @State private var playbackManager: PlaybackManager
+
+    init() {
+        let auth = SpotifyAuthManager()
+        let api = SpotifyAPIClient(authManager: auth)
+        _appModel = State(initialValue: AppModel())
+        _authManager = State(initialValue: auth)
+        _apiClient = State(initialValue: api)
+        _playbackManager = State(initialValue: PlaybackManager(api: api))
+    }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(appModel)
-        }
-
-        ImmersiveSpace(id: appModel.immersiveSpaceID) {
-            ImmersiveView()
-                .environment(appModel)
-                .onAppear {
-                    appModel.immersiveSpaceState = .open
-                }
-                .onDisappear {
-                    appModel.immersiveSpaceState = .closed
+                .environment(authManager)
+                .environment(apiClient)
+                .environment(playbackManager)
+                .task {
+                    await authManager.restoreSessionIfAvailable()
                 }
         }
-        .immersionStyle(selection: .constant(.mixed), in: .mixed)
-     }
+    }
 }
