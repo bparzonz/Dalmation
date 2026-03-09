@@ -107,6 +107,24 @@ final class PlaybackManager {
         }
     }
 
+    func seek(to positionMs: Int) async {
+        do {
+            try await api.seek(toMs: positionMs)
+            if let s = state {
+                state = PlaybackState(
+                    isPlaying: s.isPlaying,
+                    progressMs: positionMs,
+                    item: s.item,
+                    device: s.device,
+                    shuffleState: s.shuffleState,
+                    repeatState: s.repeatState
+                )
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func setShuffle(_ enabled: Bool) async {
         do {
             try await api.setShuffle(enabled)

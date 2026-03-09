@@ -14,6 +14,7 @@ struct SpotifyUser: Decodable, Identifiable {
     let displayName: String?
     let email: String?
     let images: [SpotifyImage]?
+    let country: String?
 
     var avatarURL: URL? { images?.first.flatMap { URL(string: $0.url) } }
 }
@@ -64,10 +65,20 @@ struct Album: Decodable, Identifiable, Hashable {
 struct Artist: Decodable, Identifiable, Hashable {
     let id: String
     let name: String
-    let images: [SpotifyImage]?   // Only present on full artist objects
+    let images: [SpotifyImage]?
     let uri: String
+    let followers: ArtistFollowers?   // Only present on full artist objects
+    let genres: [String]?             // Only present on full artist objects
 
     var imageURL: URL? { images?.first.flatMap { URL(string: $0.url) } }
+}
+
+struct ArtistFollowers: Decodable, Hashable {
+    let total: Int
+}
+
+struct ArtistTopTracksResponse: Decodable {
+    let tracks: [Track]
 }
 
 // MARK: - Playlist
@@ -78,7 +89,7 @@ struct Playlist: Decodable, Identifiable {
     let description: String?
     let images: [SpotifyImage]?
     let owner: PlaylistOwner
-    let tracks: PlaylistTracksRef
+    let tracks: PlaylistTracksRef?
     let uri: String
 
     var artworkURL: URL? { images?.first.flatMap { URL(string: $0.url) } }
@@ -151,4 +162,21 @@ struct PlaylistTrack: Decodable {
 struct SavedTrack: Decodable {
     let track: Track
     let addedAt: String
+}
+
+// MARK: - Recently Played (GET /me/player/recently-played)
+
+struct RecentlyPlayedResponse: Decodable {
+    let items: [RecentlyPlayedItem]
+}
+
+struct RecentlyPlayedItem: Decodable {
+    let track: Track
+    let playedAt: String
+}
+
+// MARK: - Recommendations (GET /recommendations)
+
+struct RecommendationsResponse: Decodable {
+    let tracks: [Track]
 }

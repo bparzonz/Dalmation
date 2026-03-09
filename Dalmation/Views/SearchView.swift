@@ -99,7 +99,12 @@ struct SearchView: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 16) {
                                 ForEach(artists.prefix(10)) { artist in
-                                    artistCard(artist)
+                                    NavigationLink {
+                                        ArtistDetailView(artist: artist)
+                                    } label: {
+                                        artistCard(artist)
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
                             .padding(.horizontal, 4)

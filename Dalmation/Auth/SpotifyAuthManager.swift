@@ -8,6 +8,7 @@
 import Foundation
 import AuthenticationServices
 import CryptoKit
+import UIKit
 
 // MARK: - Configuration
 // Set SPOTIFY_CLIENT_ID in Config.xcconfig (see Config.xcconfig.example)
@@ -21,7 +22,9 @@ private let scopes = [
     "playlist-read-collaborative",
     "user-library-read",
     "user-read-private",
-    "user-read-email"
+    "user-read-email",
+    "user-read-recently-played",
+    "user-top-read"
 ].joined(separator: " ")
 
 @MainActor
@@ -202,9 +205,13 @@ final class SpotifyAuthManager: NSObject {
 
 extension SpotifyAuthManager: ASWebAuthenticationPresentationContextProviding {
     nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first?.windows.first ?? ASPresentationAnchor()
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let activeScene = scenes.first(where: {
+            $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive
+        }) ?? scenes.first
+        return activeScene?.windows.first(where: \.isKeyWindow)
+            ?? activeScene?.windows.first
+            ?? UIWindow()
     }
 }
 

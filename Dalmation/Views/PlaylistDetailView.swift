@@ -59,7 +59,7 @@ struct PlaylistDetailView: View {
                         .lineLimit(3)
                 }
 
-                Text("\(playlist.tracks.total) songs · \(playlist.owner.displayName ?? playlist.owner.id)")
+                Text("\(playlist.tracks?.total ?? 0) songs · \(playlist.owner.displayName ?? playlist.owner.id)")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
 

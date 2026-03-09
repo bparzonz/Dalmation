@@ -77,7 +77,7 @@ struct LibraryView: View {
                             Text(playlist.name)
                                 .font(.body)
                                 .lineLimit(1)
-                            Text("\(playlist.tracks.total) songs")
+                            Text("\(playlist.tracks?.total ?? 0) songs")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }

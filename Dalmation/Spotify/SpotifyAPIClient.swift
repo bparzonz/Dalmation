@@ -13,30 +13,32 @@ enum SpotifyAPIError: Error, LocalizedError {
     case unauthorized
     case notFound
     case noActiveDevice
+    case forbidden
     case serverError(Int)
     case decodingError(Error)
     case unknown
 
     var errorDescription: String? {
         switch self {
-        case .unauthorized:        return "Session expired. Please log in again."
-        case .notFound:            return "Content not found."
-        case .noActiveDevice:      return "No active Spotify device. Open Spotify on a device first."
-        case .serverError(let c):  return "Spotify server error (\(c))."
+        case .unauthorized:         return "Session expired. Please log in again."
+        case .notFound:             return "Content not found."
+        case .noActiveDevice:       return "No active Spotify device. Open Spotify on a device first."
+        case .forbidden:            return "Access denied. A Spotify Premium account may be required."
+        case .serverError(let c):   return "Spotify server error (\(c))."
         case .decodingError(let e): return "Unexpected response: \(e.localizedDescription)"
-        case .unknown:             return "Something went wrong."
+        case .unknown:              return "Something went wrong."
         }
     }
 }
 
 // MARK: - Client
 
-@MainActor
 @Observable
 final class SpotifyAPIClient {
 
     private let baseURL = "https://api.spotify.com/v1"
     private let authManager: SpotifyAuthManager
+    private var userMarket: String = "US"
 
     private let decoder: JSONDecoder = {
         let d = JSONDecoder()
@@ -51,7 +53,9 @@ final class SpotifyAPIClient {
     // MARK: - User
 
     func currentUser() async throws -> SpotifyUser {
-        try await request("/me")
+        let user: SpotifyUser = try await request("/me")
+        if let country = user.country { userMarket = country }
+        return user
     }
 
     // MARK: - Search
@@ -97,6 +101,56 @@ final class SpotifyAPIClient {
         ])
     }
 
+    // MARK: - Artists
+
+    func artist(id: String) async throws -> Artist {
+        try await request("/artists/\(id)")
+    }
+
+    func artistTopTracks(id: String) async throws -> [Track] {
+        let response: ArtistTopTracksResponse = try await request("/artists/\(id)/top-tracks")
+        return response.tracks
+    }
+
+    func artistAlbums(id: String, limit: Int = 20) async throws -> [Album] {
+        let page: Paged<Album> = try await request("/artists/\(id)/albums", queryItems: [
+            .init(name: "include_groups", value: "album,single"),
+            .init(name: "limit", value: "\(limit)")
+        ])
+        return page.items
+    }
+
+    // MARK: - Personalised
+
+    func recentlyPlayed(limit: Int = 20) async throws -> [Track] {
+        let response: RecentlyPlayedResponse = try await request("/me/player/recently-played", queryItems: [
+            .init(name: "limit", value: "\(limit)")
+        ])
+        // Deduplicate — the same track can appear many times
+        var seen = Set<String>()
+        return response.items.compactMap { item in
+            guard seen.insert(item.track.id).inserted else { return nil }
+            return item.track
+        }
+    }
+
+    func topTracks(limit: Int = 10, timeRange: String = "short_term") async throws -> [Track] {
+        let page: Paged<Track> = try await request("/me/top/tracks", queryItems: [
+            .init(name: "limit", value: "\(limit)"),
+            .init(name: "time_range", value: timeRange)
+        ])
+        return page.items
+    }
+
+    func recommendations(seedTrackIDs: [String], limit: Int = 20) async throws -> [Track] {
+        let seeds = seedTrackIDs.prefix(5).joined(separator: ",")
+        let response: RecommendationsResponse = try await request("/recommendations", queryItems: [
+            .init(name: "seed_tracks", value: seeds),
+            .init(name: "limit", value: "\(limit)")
+        ])
+        return response.tracks
+    }
+
     // MARK: - Playback
 
     /// Returns nil when no playback session is active (Spotify returns 204).
@@ -107,6 +161,13 @@ final class SpotifyAPIClient {
     func availableDevices() async throws -> [SpotifyDevice] {
         let response: DevicesResponse = try await request("/me/player/devices")
         return response.devices
+    }
+
+    func transferPlayback(to deviceID: String) async throws {
+        try await requestVoid("/me/player", method: "PUT", jsonBody: [
+            "device_ids": [deviceID],
+            "play": true
+        ])
     }
 
     /// Play a specific track URI, or resume current playback if both args are nil.
@@ -220,11 +281,11 @@ final class SpotifyAPIClient {
             await authManager.refreshAccessToken()
             let (_, retryStatus) = try await perform(path: path, method: method, jsonBody: jsonBody, queryItems: queryItems)
             guard retryStatus != 401 else { throw SpotifyAPIError.unauthorized }
-            try checkStatus(retryStatus)
+            try checkStatus(retryStatus, isPlayback: true)
             return
         }
 
-        try checkStatus(status)
+        try checkStatus(status, isPlayback: true)
     }
 
     private func perform(
@@ -238,7 +299,15 @@ final class SpotifyAPIClient {
         }
 
         var components = URLComponents(string: baseURL + path)!
-        if !queryItems.isEmpty { components.queryItems = queryItems }
+        if !queryItems.isEmpty {
+            // Use urlQueryAllowed so commas in values (e.g. "album,single") are not percent-encoded
+            components.percentEncodedQueryItems = queryItems.map {
+                URLQueryItem(
+                    name: $0.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? $0.name,
+                    value: $0.value?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+                )
+            }
+        }
 
         var request = URLRequest(url: components.url!)
         request.httpMethod = method
@@ -262,11 +331,11 @@ final class SpotifyAPIClient {
         }
     }
 
-    private func checkStatus(_ status: Int) throws {
+    private func checkStatus(_ status: Int, isPlayback: Bool = false) throws {
         switch status {
         case 200...204: return
         case 401:       throw SpotifyAPIError.unauthorized
-        case 403:       throw SpotifyAPIError.noActiveDevice
+        case 403:       throw isPlayback ? SpotifyAPIError.noActiveDevice : SpotifyAPIError.forbidden
         case 404:       throw SpotifyAPIError.notFound
         case 500...599: throw SpotifyAPIError.serverError(status)
         default:        if status >= 400 { throw SpotifyAPIError.unknown }

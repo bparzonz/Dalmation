@@ -11,9 +11,12 @@ struct HomeView: View {
 
     @Environment(SpotifyAPIClient.self) private var api
     @Environment(PlaybackManager.self) private var playback
+    @Environment(SpotifyAuthManager.self) private var auth
 
     @State private var user: SpotifyUser?
     @State private var playlists: [Playlist] = []
+    @State private var recentTracks: [Track] = []
+    @State private var recommended: [Track] = []
     @State private var isLoading = true
 
     var body: some View {
@@ -34,6 +37,16 @@ struct HomeView: View {
                             .padding(.horizontal, 24)
                     }
                     .buttonStyle(.plain)
+
+                    // Recently Played
+                    if !recentTracks.isEmpty {
+                        trackSection("Recently Played", tracks: recentTracks)
+                    }
+
+                    // Recommended
+                    if !recommended.isEmpty {
+                        trackSection("Recommended For You", tracks: recommended)
+                    }
 
                     // Playlists
                     if !playlists.isEmpty {
@@ -62,6 +75,14 @@ struct HomeView: View {
                 .padding(.bottom, 100)
             }
             .navigationTitle("Home")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Log Out", systemImage: "rectangle.portrait.and.arrow.right") {
+                        auth.logout()
+                    }
+                    .tint(.red)
+                }
+            }
             .task { await loadContent() }
         }
     }
@@ -123,6 +144,49 @@ struct HomeView: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 
+    // MARK: - Track Section
+
+    private func trackSection(_ title: String, tracks: [Track]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.title2.bold())
+                .padding(.horizontal, 24)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    ForEach(tracks) { track in
+                        trackCard(track)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 4)
+            }
+        }
+    }
+
+    private func trackCard(_ track: Track) -> some View {
+        Button {
+            Task { await playback.play(uri: track.uri) }
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                ArtworkImage(url: track.album.artworkURL, size: 140)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(track.name)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+                        .frame(width: 140, alignment: .leading)
+                    Text(track.artists.map(\.name).joined(separator: ", "))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .frame(width: 140, alignment: .leading)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Playlist Card
 
     private func playlistCard(_ playlist: Playlist) -> some View {
@@ -134,7 +198,7 @@ struct HomeView: View {
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(2)
                     .frame(width: 160, alignment: .leading)
-                Text("\(playlist.tracks.total) songs")
+                Text("\(playlist.tracks?.total ?? 0) songs")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -145,11 +209,21 @@ struct HomeView: View {
 
     private func loadContent() async {
         isLoading = true
+
         async let userTask = try? api.currentUser()
         async let playlistsTask = try? api.userPlaylists(limit: 20)
+        async let recentTask = try? api.recentlyPlayed(limit: 20)
+        async let topTracksTask = try? api.topTracks(limit: 5)
 
         user = await userTask
         playlists = await playlistsTask?.items ?? []
+        recentTracks = await recentTask ?? []
+
+        let seedIDs = (await topTracksTask ?? []).map(\.id)
+        if !seedIDs.isEmpty {
+            recommended = (try? await api.recommendations(seedTrackIDs: seedIDs, limit: 20)) ?? []
+        }
+
         isLoading = false
     }
 }
